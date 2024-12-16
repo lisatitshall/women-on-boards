@@ -147,4 +147,24 @@ ggplot(women_on_boards_raw, aes(WomenBoardroomRate)) +
        y = "Density")
 
 
+#add bubble visuals to see if maternity and childcare variables have any links
+#no clear relationship for maternity variables
+ggplot(women_on_boards_raw, aes(
+  x = MaternityLeaveWeeks, 
+  y = WomenBoardroomRate,
+  size = MaternityPaymentRate)) +
+  geom_point(color = "blue") + 
+  theme (panel.background = element_blank()) +
+  labs(x = "Maternity leave (weeks)",
+       y = "Percentage of women on company boards")
+
+#childcare variables, no clear relationship
+ggplot(women_on_boards_raw, aes(
+  x = ChildcareSpending., 
+  y = WomenBoardroomRate,
+  size = ChildcareEnrolmentRate)) +
+  geom_point(color = "blue") + 
+  theme (panel.background = element_blank()) +
+  labs(x = "Childcare Spending",
+       y = "Percentage of women on company boards")
 
