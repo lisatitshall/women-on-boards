@@ -1,6 +1,12 @@
 #load packages
 library(tidyverse)
 
+#data notes
+#most data from 2018 except public sector rates from 2017 (wouldn't change much in a year)
+#boardroom rates are from Deloitte (plus some quota information). Rest from OECD
+#boardroom rates are for largest companies
+#childcare enrolment rate is an average of two figures for 0-2 and 3-5 yr olds
+
 #load data
 women_on_boards <- read.csv("~/WomenOnBoards/Data/WomenOnBoards.csv", 
                             header = TRUE) 
@@ -23,6 +29,17 @@ women_on_boards_raw$SoftBoardroomQuota <-
 
 
 # Visualizations ----------------------
+
+#plot the distribution of the boardroom rate
+#12.5-17.5% and 22.5-27.5% most common
+ggplot(women_on_boards_raw, aes(WomenBoardroomRate)) +
+  geom_histogram(aes(y = after_stat(density)), binwidth = 5) +
+  stat_function(fun = dnorm, args = 
+                  list(mean = mean(women_on_boards_raw$WomenBoardroomRate), 
+                       sd = sd(women_on_boards_raw$WomenBoardroomRate)),
+                colour = "red") +
+  labs(x = "Percentage of women on company boards",
+       y = "Density")
 
 #quick plot of all variables (except country)
 #boardroom rate is what we're predicting, first impressions
@@ -111,15 +128,15 @@ ggplot(women_on_boards_raw, aes(x = HardBoardroomQuota, fill = SoftBoardroomQuot
 
 #add a new variable to say whether there's any quota, change to factor
 women_on_boards_raw <- women_on_boards_raw %>%
-  mutate(any_quota = case_when(HardBoardroomQuota == "Yes" ~ "Hard",
+  mutate(AnyQuota = case_when(HardBoardroomQuota == "Yes" ~ "Hard",
                                SoftBoardroomQuota == "Yes" ~ "Soft",
                                .default = "No quota"
   ))
-women_on_boards_raw$any_quota <- as.factor(women_on_boards_raw$any_quota)
+women_on_boards_raw$AnyQuota <- as.factor(women_on_boards_raw$AnyQuota)
 
 #plot new variable
 #clearer relationship
-ggplot(women_on_boards_raw, aes(x= reorder(any_quota, WomenBoardroomRate, 
+ggplot(women_on_boards_raw, aes(x= reorder(AnyQuota, WomenBoardroomRate, 
                                            FUN =median),y =WomenBoardroomRate)) +
   geom_boxplot() +
   theme (panel.background = element_blank()) +
@@ -127,24 +144,12 @@ ggplot(women_on_boards_raw, aes(x= reorder(any_quota, WomenBoardroomRate,
        y = "Percentage of women on company boards")
 
 #try density plot on new variable
-ggplot(women_on_boards_raw, aes(WomenBoardroomRate, after_stat(density), colour = any_quota)) +
+ggplot(women_on_boards_raw, aes(WomenBoardroomRate, after_stat(density), colour = AnyQuota)) +
   geom_density(linewidth = 1) +
   theme (panel.background = element_blank()) +
   scale_x_continuous(breaks = c(0, 10, 20, 30, 40, 50, 60)) +
   labs(x = "Percentage of women on company boards",
        y = "Density") 
-
-
-#plot the distribution of the boardroom rate
-#12.5-17.5% and 22.5-27.5% most common
-ggplot(women_on_boards_raw, aes(WomenBoardroomRate)) +
-  geom_histogram(aes(y = after_stat(density)), binwidth = 5) +
-  stat_function(fun = dnorm, args = 
-                  list(mean = mean(women_on_boards_raw$WomenBoardroomRate), 
-                       sd = sd(women_on_boards_raw$WomenBoardroomRate)),
-                colour = "red") +
-  labs(x = "Percentage of women on company boards",
-       y = "Density")
 
 
 #add bubble visuals to see if maternity and childcare variables have any links
@@ -167,4 +172,18 @@ ggplot(women_on_boards_raw, aes(
   theme (panel.background = element_blank()) +
   labs(x = "Childcare Spending",
        y = "Percentage of women on company boards")
+
+
+#Ideas:
+#Are the highest maternity leave data points outliers?
+#   How does removing them affect the relationship with boardroom rate?
+#Assess correlation between numeric variables to see if the results
+#   match the plots
+#Use statistical test to assess whether quota groups differ in % on boards
+#What method would be used to predict boardroom rate?
+#Are there closely related variables which could be removed from the model? 
+#Sampling would need to include hard/soft/no quota countries (encoded)
+#Scaling could be needed especially for childcare spending
+#Later: Are there clusters within data for similar countries?
+
 
