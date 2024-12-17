@@ -173,12 +173,83 @@ ggplot(women_on_boards_raw, aes(
   labs(x = "Childcare Spending",
        y = "Percentage of women on company boards")
 
+# Statistics ----------------
+#plot maternity leave box plot to look for outliers
+#The four points we observed before are marked as outliers (1.5 * IQR)
+ggplot(women_on_boards_raw, aes(MaternityLeaveWeeks)) +
+  geom_boxplot()
+
+#are the outliers more than 3 IQR away? Yes
+outlier_min <- quantile(women_on_boards_raw$MaternityLeaveWeeks, probs = 0.75) + 
+  3 * (IQR(women_on_boards_raw$MaternityLeaveWeeks))
+
+#alternative dataset which removes those 4 rows
+women_on_boards_raw_no_outliers <- women_on_boards_raw %>% 
+  filter(MaternityLeaveWeeks < outlier_min)
+
+#calculate correlation between all numeric variables
+correlations <- cor(women_on_boards_raw %>% select(MaternityLeaveWeeks:PublicSectorRate, 
+                                   WomenBoardroomRate))
+
+#correlation with outcome (boardroom rate)
+#weak: maternity leave weeks, maternity payment rate (negative)
+#moderate: childcare enrolment, public sector rate (positive)
+#strong: childcare spending (positive)
+
+#see what the p-values are
+#0.007
+cor.test(women_on_boards_raw$ChildcareSpending., 
+         women_on_boards_raw$WomenBoardroomRate)
+#0.03
+cor.test(women_on_boards_raw$ChildcareEnrolmentRate, 
+         women_on_boards_raw$WomenBoardroomRate)
+#0.02
+cor.test(women_on_boards_raw$PublicSectorRate, 
+         women_on_boards_raw$WomenBoardroomRate)
+
+#correlation between variables (only moderate/high listed)
+#moderate: maternity leave and childcare enrolment (-ive), 
+  #maternity leave/payment rate and public sector rate (+ive)
+#strong: childcare enrolment and spending (+ive), 
+  #childcare spending and public sector rate (+ve)
+
+#see what the p-values are
+#0.001
+cor.test(women_on_boards_raw$ChildcareSpending., 
+         women_on_boards_raw$ChildcareEnrolmentRate)
+#0.007
+cor.test(women_on_boards_raw$ChildcareSpending., 
+         women_on_boards_raw$PublicSectorRate)
+#0.03
+cor.test(women_on_boards_raw$PublicSectorRate, 
+         women_on_boards_raw$MaternityLeaveWeeks)
+#0.07, don't reject null, correlation is equal to 0
+cor.test(women_on_boards_raw$ChildcareEnrolmentRate, 
+         women_on_boards_raw$MaternityLeaveWeeks)
+#0.13, don't reject null, correlation is equal to 0
+cor.test(women_on_boards_raw$PublicSectorRate, 
+         women_on_boards_raw$MaternityPaymentRate)
+
+#how different are the correlations without the extreme maternity values
+#obviously the maternity leave ones are different
+#maternity leave / boardroom rate now moderately positive
+#only two other pairs are significantly different and have stronger relationship:
+  #public sector rate and boardroom rate (already significant)
+  #public sector rate and child enrolment rate (now significant wasn't before)
+correlations_2 <- cor(women_on_boards_raw_no_outliers %>% 
+                        select(MaternityLeaveWeeks:PublicSectorRate, 
+                                                   WomenBoardroomRate))
+
+#plot new maternity leave relationship, moderate positive relationship
+ggplot(women_on_boards_raw_no_outliers, aes(x = MaternityLeaveWeeks, y = WomenBoardroomRate)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = F, col = "red") +
+  theme (panel.background = element_blank()) +
+  labs(x = "Maternity leave (weeks)",
+       y = "Percentage of women on company boards")
 
 #Ideas:
-#Are the highest maternity leave data points outliers?
-#   How does removing them affect the relationship with boardroom rate?
-#Assess correlation between numeric variables to see if the results
-#   match the plots
+#Should the maternity leave outliers be removed from the dataset???
 #Use statistical test to assess whether quota groups differ in % on boards
 #What method would be used to predict boardroom rate?
 #Are there closely related variables which could be removed from the model? 
