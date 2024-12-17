@@ -27,6 +27,32 @@ women_on_boards_raw$HardBoardroomQuota <-
 women_on_boards_raw$SoftBoardroomQuota <- 
   as.factor(women_on_boards_raw$SoftBoardroomQuota)
 
+#is there any null data, no
+women_on_boards_raw %>% 
+  summarize(across(everything(), ~sum(is.na(.x))))
+
+#function for repeated visualizations
+plot_continuous <- function(col){
+  plt <- women_on_boards_raw %>% 
+    ggplot(aes(x={{col}}, y=WomenBoardroomRate)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = F, color = "red") +
+    theme (panel.background = element_blank())
+  
+  plt
+}
+
+#functions for plotting new AnyQuota category variable - no/soft/hard quota
+plot_categorical <- function(col){
+  plt <- women_on_boards_raw %>% 
+    ggplot(aes(x= AnyQuota, y={{col}})) +
+    geom_boxplot() +
+    theme (panel.background = element_blank())
+  
+  plt
+}
+
+
 
 # Visualizations ----------------------
 
@@ -49,49 +75,26 @@ ggplot(women_on_boards_raw, aes(WomenBoardroomRate)) +
 #  soft boardroom quota??
 plot(women_on_boards_raw %>% select(MaternityLeaveWeeks:WomenBoardroomRate))
 
-#plot individual pairings
+#plot individual pairings using function
 #plot maternity leave weeks vs boardroom rate
 #a few outliers are skewing the data, without them would be positive relationship
-ggplot(women_on_boards_raw, aes(x = MaternityLeaveWeeks, y = WomenBoardroomRate)) +
-  geom_point() + 
-  geom_smooth(method = "lm", se = F, col = "red") +
-  theme (panel.background = element_blank()) +
-  labs(x = "Maternity leave (weeks)",
-       y = "Percentage of women on company boards")
+plot_continuous(MaternityLeaveWeeks)
 
 #maternity payment rate vs boardroom rate
 #no clear relationship
-ggplot(women_on_boards_raw, aes(x = MaternityPaymentRate, y = WomenBoardroomRate)) +
-  geom_point() + 
-  theme (panel.background = element_blank()) +
-  labs(x = "Maternity payment rate",
-       y = "Percentage of women on company boards")
+plot_continuous(MaternityPaymentRate)
 
 #childcare spending vs boardroom rate
 #positive relationship but fewer data points with high spending
-ggplot(women_on_boards_raw, aes(x = ChildcareSpending., y = WomenBoardroomRate)) +
-  geom_point() + 
-  geom_smooth(method = "lm", se = F, col = "red") +
-  theme (panel.background = element_blank()) +
-  labs(x = "Childcare spending ($)",
-       y = "Percentage of women on company boards")
+plot_continuous(ChildcareSpending.)
 
 #childcare enrolment rate vs boardroom rate
-ggplot(women_on_boards_raw, aes(x = ChildcareEnrolmentRate, y = WomenBoardroomRate)) +
-  geom_point() + 
-  geom_smooth(method = "lm", se = F, col = "red") +
-  theme (panel.background = element_blank()) +
-  labs(x = "Childcare enrolment rate",
-       y = "Percentage of women on company boards")
+#positive relationship
+plot_continuous(ChildcareEnrolmentRate)
 
 #public sector rate vs boardroom rate
 #positive relationship
-ggplot(women_on_boards_raw, aes(x = PublicSectorRate, y = WomenBoardroomRate)) +
-  geom_point() + 
-  geom_smooth(method = "lm", se = F, col = "red") +
-  theme (panel.background = element_blank()) +
-  labs(x = "Public sector rate",
-       y = "Percentage of women on company boards")
+plot_continuous(PublicSectorRate)
 
 #plot hard boardroom quota vs boardroom rate 
 #as expected clear difference but only 4 countries with hard quota
@@ -109,16 +112,6 @@ ggplot(women_on_boards_raw, aes(WomenBoardroomRate, after_stat(density), colour 
   scale_x_continuous(breaks = c(0, 10, 20, 30, 40, 50, 60)) +
   labs(x = "Percentage of women on company boards",
        y = "Density") 
-
-#alternative to frequency distribution
-ggplot(women_on_boards_raw, 
-       aes(SoftBoardroomQuota, 
-           WomenBoardroomRate, 
-           fill = SoftBoardroomQuota)) +
-  geom_violin(col = NA) +
-  theme (panel.background = element_blank()) +
-  labs(x = "Soft boardroom quota",
-       y = "Percentage of women on company boards") 
 
 #what is the number of hard/soft/no quotas
 #soft no can mean hard yes...
@@ -233,7 +226,7 @@ cor.test(women_on_boards_raw$PublicSectorRate,
 #how different are the correlations without the extreme maternity values
 #obviously the maternity leave ones are different
 #maternity leave / boardroom rate now moderately positive
-#only two other pairs are significantly different and have stronger relationship:
+#only two other pairs are significantly different:
   #public sector rate and boardroom rate (already significant)
   #public sector rate and child enrolment rate (now significant wasn't before)
 correlations_2 <- cor(women_on_boards_raw_no_outliers %>% 
@@ -248,13 +241,61 @@ ggplot(women_on_boards_raw_no_outliers, aes(x = MaternityLeaveWeeks, y = WomenBo
   labs(x = "Maternity leave (weeks)",
        y = "Percentage of women on company boards")
 
+#is correlation between boardroom rate and maternity leave weeks significant
+  #with outliers removed? Not at 0.05 level... p 0.08 borderline
+cor.test(women_on_boards_raw_no_outliers$WomenBoardroomRate, 
+         women_on_boards_raw_no_outliers$MaternityLeaveWeeks)
+
+#can we conclude statistically that boardroom rate differs among quota?
+#assumptions for ANOVA:
+#independent populations - yes, different quotas
+#populations have equal standard deviation - yes, see below
+#populations follow normal - no, from earlier plot
+#also, small datasets...
+no_quota <- women_on_boards_raw %>% filter(AnyQuota == "No quota")
+soft_quota <- women_on_boards_raw %>% filter(AnyQuota == "Soft")
+hard_quota <- women_on_boards_raw %>% filter(AnyQuota == "Hard")
+
+#another way to assess normality
+qqnorm(hard_quota$WomenBoardroomRate, pch = 1, frame = FALSE)
+qqline(hard_quota$WomenBoardroomRate, col = "blue", lwd = 2)
+
+#variances are equal for all 3 combinations
+var.test(soft_quota$WomenBoardroomRate, 
+         hard_quota$WomenBoardroomRate,
+         conf.level = 0.95)
+
+#anova rejects null but not all assumptions were fulfilled and samples are small
+one_way_anova <- aov(WomenBoardroomRate ~ AnyQuota, 
+                     data = women_on_boards_raw)
+summary(one_way_anova)
+
+#is there a relationship between AnyQuota and other numeric variables
+#yes for childcare/maternity leave, no for public sector rate
+plot_categorical(ChildcareSpending.)
+plot_categorical(ChildcareEnrolmentRate)
+plot_categorical(PublicSectorRate)
+women_on_boards_raw_no_outliers %>% 
+  ggplot(aes(x= AnyQuota, y=MaternityLeaveWeeks)) +
+  geom_boxplot() +
+  theme (panel.background = element_blank())
+
+# Model ----------------
+#Compare results with and without maternity leave outliers
+
+#With maternity leave outliers use:
+  # ChildcareSpending., ChildcareEnrolmentRate, PublicSectorRate, AnyQuota
+  # some of these variables are correlated so depends on method we use
+#Without maternity leave outliers use:
+  # As above but include MaternityLeaveWeeks
+
 #Ideas:
-#Should the maternity leave outliers be removed from the dataset???
-#Use statistical test to assess whether quota groups differ in % on boards
+
 #What method would be used to predict boardroom rate?
 #Are there closely related variables which could be removed from the model? 
 #Sampling would need to include hard/soft/no quota countries (encoded)
 #Scaling could be needed especially for childcare spending
+#Later: Use cross validation because of small dataset and see how it compares
 #Later: Are there clusters within data for similar countries?
 
 
