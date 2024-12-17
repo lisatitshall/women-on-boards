@@ -7,6 +7,7 @@ The data consists of a list of countries and variables relating to maternity lea
 
 - Step 1: Load data from csv and change datatypes as required
 - Step 2: Plot data to explore relationships
+- Step 3: Investigated outliers and assessed correlation between numeric variables
 
 ## Findings
 
