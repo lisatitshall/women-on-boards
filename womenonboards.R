@@ -1,5 +1,6 @@
 #load packages
 library(tidyverse)
+library(tidymodels)
 
 #data notes
 #most data from 2018 except public sector rates from 2017 (wouldn't change much in a year)
@@ -42,7 +43,7 @@ plot_continuous <- function(col){
   plt
 }
 
-#functions for plotting new AnyQuota category variable - no/soft/hard quota
+#function for plotting new AnyQuota category variable - no/soft/hard quota
 plot_categorical <- function(col){
   plt <- women_on_boards_raw %>% 
     ggplot(aes(x= AnyQuota, y={{col}})) +
@@ -58,6 +59,7 @@ plot_categorical <- function(col){
 
 #plot the distribution of the boardroom rate
 #12.5-17.5% and 22.5-27.5% most common
+#looks approx normal
 ggplot(women_on_boards_raw, aes(WomenBoardroomRate)) +
   geom_histogram(aes(y = after_stat(density)), binwidth = 5) +
   stat_function(fun = dnorm, args = 
@@ -66,6 +68,9 @@ ggplot(women_on_boards_raw, aes(WomenBoardroomRate)) +
                 colour = "red") +
   labs(x = "Percentage of women on company boards",
        y = "Density")
+
+median(women_on_boards_raw$WomenBoardroomRate)
+mean(women_on_boards_raw$WomenBoardroomRate)
 
 #quick plot of all variables (except country)
 #boardroom rate is what we're predicting, first impressions
@@ -77,7 +82,7 @@ plot(women_on_boards_raw %>% select(MaternityLeaveWeeks:WomenBoardroomRate))
 
 #plot individual pairings using function
 #plot maternity leave weeks vs boardroom rate
-#a few outliers are skewing the data, without them would be positive relationship
+#a few outliers are skewing the data, without them positive relationship
 plot_continuous(MaternityLeaveWeeks)
 
 #maternity payment rate vs boardroom rate
@@ -251,7 +256,6 @@ cor.test(women_on_boards_raw_no_outliers$WomenBoardroomRate,
 #independent populations - yes, different quotas
 #populations have equal standard deviation - yes, see below
 #populations follow normal - no, from earlier plot
-#also, small datasets...
 no_quota <- women_on_boards_raw %>% filter(AnyQuota == "No quota")
 soft_quota <- women_on_boards_raw %>% filter(AnyQuota == "Soft")
 hard_quota <- women_on_boards_raw %>% filter(AnyQuota == "Hard")
@@ -260,15 +264,16 @@ hard_quota <- women_on_boards_raw %>% filter(AnyQuota == "Hard")
 qqnorm(hard_quota$WomenBoardroomRate, pch = 1, frame = FALSE)
 qqline(hard_quota$WomenBoardroomRate, col = "blue", lwd = 2)
 
-#variances are equal for all 3 combinations
-var.test(soft_quota$WomenBoardroomRate, 
-         hard_quota$WomenBoardroomRate,
-         conf.level = 0.95)
+#Kruskal Wallis instead of ANOVA. Assumptions:
+#Dependent variable is ordinal or continuous - yes
+#Independent variable has more than two independent groups - yes
+#Observations within and between groups are independent - yes
+#shapes of distributions aren't the same so compare mean ranks
 
-#anova rejects null but not all assumptions were fulfilled and samples are small
-one_way_anova <- aov(WomenBoardroomRate ~ AnyQuota, 
-                     data = women_on_boards_raw)
-summary(one_way_anova)
+#there's a significant difference in values among groups
+kruskal.test(WomenBoardroomRate ~ AnyQuota, data = women_on_boards_raw)
+kruskal.test(WomenBoardroomRate ~ AnyQuota, 
+             data = women_on_boards_raw_no_outliers)
 
 #is there a relationship between AnyQuota and other numeric variables
 #yes for childcare/maternity leave, no for public sector rate
@@ -288,6 +293,62 @@ women_on_boards_raw_no_outliers %>%
   # some of these variables are correlated so depends on method we use
 #Without maternity leave outliers use:
   # As above but include MaternityLeaveWeeks
+
+
+#To start try linear regression on ChildcareSpending and AnyQuota
+#Boardroom Rate looks approximately normal
+#No outliers for chosen variables
+#Only one numerical independent variable so leave scaling for now
+#Try test/train for now but would prefer cross validation on small set
+
+#split into test train
+set.seed(1353)
+split <- initial_split(women_on_boards_raw, strata = AnyQuota)
+train <- training(split)
+test <- testing(split)
+
+#create recipe, no preprocessing for now but get used to structure
+recipe <- recipe(
+  WomenBoardroomRate ~ ChildcareSpending. + AnyQuota,
+  data = train
+) 
+
+#set up linear regression model
+linear_model <- linear_reg() 
+
+#set up workflow
+workflow <- workflow() %>% 
+  add_model(linear_model) %>%
+  add_recipe(recipe)
+
+#fit model on training set
+model_fit <- workflow %>% fit(data = train)
+
+#review model, childcare spending not statistically significant at 5% level
+model_fit %>% extract_fit_parsnip() %>% tidy()
+
+#add predictions to training set
+train_augment <-augment(model_fit, train)
+
+#calculate r2, 65% of variation explained by model
+rsq(train_augment, truth = WomenBoardroomRate, estimate = .pred)
+
+#run model on test set and add predictions to test data
+test_augment <- augment(model_fit, test)
+test_augment %>% 
+  select(Country, ChildcareSpending., AnyQuota, WomenBoardroomRate,
+         .pred, .resid)
+
+#plot predictions against actual, same amount above/below but not close to 0
+ggplot(test_augment, aes(x = .pred, y=WomenBoardroomRate)) +
+  geom_point(aes(color = AnyQuota)) +
+  geom_abline(intercept = 0, slope = 1)
+
+#plot distribution of residuals, not too bad
+qqnorm(test_augment$.resid, pch = 1, frame = FALSE)
+qqline(test_augment$.resid, col = "blue", lwd = 2)
+
+#overall model doesn't explain enough variation in the data
 
 #Ideas:
 
