@@ -1,6 +1,7 @@
 #load packages
 library(tidyverse)
 library(tidymodels)
+library(mgcv)
 
 #data notes
 #most data from 2018 except public sector rates from 2017 (wouldn't change much in a year)
@@ -37,8 +38,8 @@ plot_continuous <- function(col){
   plt <- women_on_boards_raw %>% 
     ggplot(aes(x={{col}}, y=WomenBoardroomRate)) +
     geom_point() +
-    geom_smooth(method = "lm", se = F, color = "red") +
-    theme (panel.background = element_blank())
+    geom_smooth(se = F, color = "red") +
+    theme_bw()
   
   plt
 }
@@ -48,7 +49,7 @@ plot_categorical <- function(col){
   plt <- women_on_boards_raw %>% 
     ggplot(aes(x= AnyQuota, y={{col}})) +
     geom_boxplot() +
-    theme (panel.background = element_blank())
+    theme_bw()
   
   plt
 }
@@ -91,11 +92,37 @@ plot_continuous(MaternityPaymentRate)
 
 #childcare spending vs boardroom rate
 #positive relationship but fewer data points with high spending
+#couple of outliers too
 plot_continuous(ChildcareSpending.)
+
+#check for linearity
+#almost quadratic edf but confidence intervals are wide, not clearly quadratic
+gam_model <- gam(WomenBoardroomRate ~ s(ChildcareSpending.), 
+                   data = women_on_boards_raw)
+summary(gam_model)
+plot(gam_model)
+par(mfrow = c(2,2))
+gam.check(gam_model)
+par(mfrow = c(1,1))
+
+#is childcare spending normal? No, positively skewed
+ggplot(women_on_boards_raw, aes(ChildcareSpending., after_stat(density))) +
+  geom_histogram(binwidth = 1000) +
+  theme_bw()
 
 #childcare enrolment rate vs boardroom rate
 #positive relationship
+#could argue it's non linear
 plot_continuous(ChildcareEnrolmentRate)
+
+#childcare enrolment rate is significant but linear
+par(mfrow = c(2,2))
+gam_model_2 <- gam(WomenBoardroomRate ~ s(ChildcareEnrolmentRate), 
+                 data = women_on_boards_raw)
+summary(gam_model_2)
+plot(gam_model_2)
+gam.check(gam_model_2)
+par(mfrow = c(1,1))
 
 #public sector rate vs boardroom rate
 #positive relationship
@@ -105,15 +132,17 @@ plot_continuous(PublicSectorRate)
 #as expected clear difference but only 4 countries with hard quota
 ggplot(women_on_boards_raw, aes (HardBoardroomQuota, WomenBoardroomRate)) +
   geom_boxplot() +
-  theme (panel.background = element_blank()) +
+  theme_bw() +
   labs(x = "Hard boardroom quota",
        y = "Percentage of women on company boards")
 
 #plot soft boardroom quota vs boardroom rate
 #lots of cross over, no has smaller and larger percentages
-ggplot(women_on_boards_raw, aes(WomenBoardroomRate, after_stat(density), colour = SoftBoardroomQuota)) +
+#yes looks normally distributed, no positive skewed
+ggplot(women_on_boards_raw, 
+       aes(WomenBoardroomRate, after_stat(density), colour = SoftBoardroomQuota)) +
   geom_density(linewidth = 1) +
-  theme (panel.background = element_blank()) +
+  theme_bw() +
   scale_x_continuous(breaks = c(0, 10, 20, 30, 40, 50, 60)) +
   labs(x = "Percentage of women on company boards",
        y = "Density") 
@@ -137,14 +166,16 @@ women_on_boards_raw$AnyQuota <- as.factor(women_on_boards_raw$AnyQuota)
 ggplot(women_on_boards_raw, aes(x= reorder(AnyQuota, WomenBoardroomRate, 
                                            FUN =median),y =WomenBoardroomRate)) +
   geom_boxplot() +
-  theme (panel.background = element_blank()) +
+  theme_bw() +
   labs(x = "Boardroom quota",
        y = "Percentage of women on company boards")
 
 #try density plot on new variable
-ggplot(women_on_boards_raw, aes(WomenBoardroomRate, after_stat(density), colour = AnyQuota)) +
+#soft looks normal, no positive skew, hard, negative skew
+ggplot(women_on_boards_raw, 
+       aes(WomenBoardroomRate, after_stat(density), colour = AnyQuota)) +
   geom_density(linewidth = 1) +
-  theme (panel.background = element_blank()) +
+  theme_bw() +
   scale_x_continuous(breaks = c(0, 10, 20, 30, 40, 50, 60)) +
   labs(x = "Percentage of women on company boards",
        y = "Density") 
@@ -157,7 +188,7 @@ ggplot(women_on_boards_raw, aes(
   y = WomenBoardroomRate,
   size = MaternityPaymentRate)) +
   geom_point(color = "blue") + 
-  theme (panel.background = element_blank()) +
+  theme_bw() +
   labs(x = "Maternity leave (weeks)",
        y = "Percentage of women on company boards")
 
@@ -167,7 +198,7 @@ ggplot(women_on_boards_raw, aes(
   y = WomenBoardroomRate,
   size = ChildcareEnrolmentRate)) +
   geom_point(color = "blue") + 
-  theme (panel.background = element_blank()) +
+  theme_bw() +
   labs(x = "Childcare Spending",
        y = "Percentage of women on company boards")
 
@@ -184,6 +215,10 @@ outlier_min <- quantile(women_on_boards_raw$MaternityLeaveWeeks, probs = 0.75) +
 #alternative dataset which removes those 4 rows
 women_on_boards_raw_no_outliers <- women_on_boards_raw %>% 
   filter(MaternityLeaveWeeks < outlier_min)
+
+#are there any outliers for childcare spending? No
+ggplot(women_on_boards_raw, aes(ChildcareSpending.)) +
+  geom_boxplot()
 
 #calculate correlation between all numeric variables
 correlations <- cor(women_on_boards_raw %>% select(MaternityLeaveWeeks:PublicSectorRate, 
@@ -221,10 +256,10 @@ cor.test(women_on_boards_raw$ChildcareSpending.,
 #0.03
 cor.test(women_on_boards_raw$PublicSectorRate, 
          women_on_boards_raw$MaternityLeaveWeeks)
-#0.07, don't reject null, correlation is equal to 0
+#0.07, significant at 0.1 level
 cor.test(women_on_boards_raw$ChildcareEnrolmentRate, 
          women_on_boards_raw$MaternityLeaveWeeks)
-#0.13, don't reject null, correlation is equal to 0
+#0.13, significant at 0.1 level
 cor.test(women_on_boards_raw$PublicSectorRate, 
          women_on_boards_raw$MaternityPaymentRate)
 
@@ -239,10 +274,11 @@ correlations_2 <- cor(women_on_boards_raw_no_outliers %>%
                                                    WomenBoardroomRate))
 
 #plot new maternity leave relationship, moderate positive relationship
-ggplot(women_on_boards_raw_no_outliers, aes(x = MaternityLeaveWeeks, y = WomenBoardroomRate)) +
+ggplot(women_on_boards_raw_no_outliers, 
+       aes(x = MaternityLeaveWeeks, y = WomenBoardroomRate)) +
   geom_point() + 
   geom_smooth(method = "lm", se = F, col = "red") +
-  theme (panel.background = element_blank()) +
+  theme_bw() +
   labs(x = "Maternity leave (weeks)",
        y = "Percentage of women on company boards")
 
@@ -283,7 +319,13 @@ plot_categorical(PublicSectorRate)
 women_on_boards_raw_no_outliers %>% 
   ggplot(aes(x= AnyQuota, y=MaternityLeaveWeeks)) +
   geom_boxplot() +
-  theme (panel.background = element_blank())
+  theme_bw()
+
+#try Kruskal Wallis to see if childcare spending differs by AnyQuota
+#borderline for full dataset, not connected for no outlier dataset
+kruskal.test(ChildcareSpending. ~ AnyQuota, data = women_on_boards_raw)
+kruskal.test(ChildcareSpending. ~ AnyQuota, 
+             data = women_on_boards_raw_no_outliers)
 
 # Model ----------------
 #Compare results with and without maternity leave outliers
@@ -296,6 +338,16 @@ women_on_boards_raw_no_outliers %>%
 
 
 #To start try linear regression on ChildcareSpending and AnyQuota
+#First visualize to see what the patterns are
+#lots of uncertainty, wide confidence intervals
+#hard/soft quota have same slope, no quota doesn't
+ggplot(data = women_on_boards_raw, aes(x = ChildcareSpending., 
+                                       y = WomenBoardroomRate, 
+                                       colour = AnyQuota)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  theme_bw()
+
 #Boardroom Rate looks approximately normal
 #No outliers for chosen variables
 #Only one numerical independent variable so leave scaling for now
@@ -339,6 +391,15 @@ test_augment %>%
   select(Country, ChildcareSpending., AnyQuota, WomenBoardroomRate,
          .pred, .resid)
 
+#plot residuals against fitted, looks OK
+ggplot(test_augment, aes(x = .pred, y=.resid)) +
+  geom_point(aes(color = AnyQuota))
+
+#plot distribution of residuals, looks negatively skewed
+ggplot(test_augment, aes(.resid, after_stat(density))) +
+  geom_histogram(binwidth = 1) +
+  theme_bw()
+
 #plot predictions against actual, same amount above/below but not close to 0
 ggplot(test_augment, aes(x = .pred, y=WomenBoardroomRate)) +
   geom_point(aes(color = AnyQuota)) +
@@ -350,10 +411,18 @@ qqline(test_augment$.resid, col = "blue", lwd = 2)
 
 #overall model doesn't explain enough variation in the data
 
+#quick check to see if quadratic childcare spending variable is useful, no
+lm <- lm(WomenBoardroomRate ~ AnyQuota + I(ChildcareSpending.^2) ,
+         data = train)
+summary(lm)
+
 #Ideas:
 
-#What method would be used to predict boardroom rate?
-#Are there closely related variables which could be removed from the model? 
+#Try using ANCOVA on ChildcareSpending/AnyQuota 
+#   because slopes are different for each quota
+#Try ridge or lasso regression because ChildcareSpending/AnyQuota are correlated
+#Try log transform of ChildcareSpending to make it more symmetric
+#What other methods could be used to predict boardroom rate?
 #Sampling would need to include hard/soft/no quota countries (encoded)
 #Scaling could be needed especially for childcare spending
 #Later: Use cross validation because of small dataset and see how it compares
