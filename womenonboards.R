@@ -410,7 +410,7 @@ model_fit %>% extract_fit_parsnip() %>% tidy()
 #add predictions and residuals to train dataset 
 train_augment <-augment(model_fit, train) 
 
-#look at rsq, 65% of variation in price explained by model
+#look at rsq, 65% of variation in boardroom rate explained by model
 rsq(train_augment, truth = WomenBoardroomRate, estimate = .pred) 
 
 #mean absolute error, average prediction is wrong by 4.1, not too bad
@@ -441,7 +441,7 @@ qqline(train_augment$.resid, col = "blue", lwd = 2)
 
 #use 5-fold cross validation
 set.seed(1001)
-train_folds <- vfold_cv(train, v = 5)
+train_folds <- vfold_cv(train, v = 5, strata = AnyQuota)
 
 #function to get model results
 get_model <- function(x) {
@@ -511,7 +511,7 @@ test_fit$.workflow
 #Try ridge or lasso regression because ChildcareSpending/AnyQuota are correlated
 # note: without no quota countries, quota/childcare spend looks like a good model,
 # which variables (if any) are correlated to boardroom rate for no quota countries
-#Try log transform of ChildcareSpending to make it more symmetric
+#Try log transform of ChildcareSpending to make it more symmetric (if needed)
 #What other methods could be used?
 #Later: Are there clusters within data for similar countries?
 
