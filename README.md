@@ -10,6 +10,7 @@ The data consists of a list of countries and variables relating to maternity lea
 - Step 3: Plot variables individually to assess distribution shape and whether there are outliers
 - Step 4: Plot dependent and independent variables to assess strength and linearity of relationships
 - Step 5: Use correlation, ANOVA and Kruskal Wallis tests to confirm relationships statistically
+- Step 6: Use tidymodels with k-fold cross validation to fit a linear model
 
 ## Findings
 ### [1] The percentage of women on boards is approximately normal
@@ -50,4 +51,31 @@ The results for childcare spending and childcare enrolment rate were significant
 ![kruskal wallis any quota childcare spending with](https://github.com/user-attachments/assets/1f9d1a70-9b8f-4ae0-b2d0-12b8040beb49)
 
 ![image](https://github.com/user-attachments/assets/1028b91d-a7ce-436d-8592-95140eca59da)
+
+### [6] Childcare spending and quota alone don't explain enough variation in boardroom rate
+Based on the analysis above the most interesting variables for predicting boardroom rate were: any quota, childcare spending, childcare enrolment rate and maternity leave weeks. Because of the maternity outliers and correlation between childcare spending and childcare enrolment rate we started by visualizing boardroom rate, childcare spending and any quota (see graph below). 
+
+![image](https://github.com/user-attachments/assets/bda9774f-6807-42f5-b42a-96efd736a2df)
+
+As we'd expect boardroom rate generally increases for each level of quota. The hard and soft quotas also show a moderate, positive linear relationship between childcare spending and boardroom rate. However, the same doesn't hold for the no quota countries.
+
+The table below shows the results of fitting a linear model on a training set where boardroom rate is the dependent variable and childcare spending and any quota are the independent variables. Childcare spending was not as significant as we'd like but not bad. The r-squared value was 65% and the mean absolute error 4.1. Again, not bad but not the best.
+
+![image](https://github.com/user-attachments/assets/87497819-ebf1-4f07-99df-3ad0090db04b)
+
+Plotting the residuals showed no significant violation of linear regression assumptions (homoscedasticity and normal errors). 
+
+![image](https://github.com/user-attachments/assets/74905375-0818-4eef-b596-a200b8d2d960)
+
+![image](https://github.com/user-attachments/assets/6f3f685e-9f56-4ed4-ad0f-749cfedd5644)
+
+5-fold cross validation was performed to give a more accurate idea of how the model was likely to perform on an unseen test dataset. The average metrics can be seen in the table below. On average only 23% of the variation in boardroom rate was explained by the model and the average mean absolute error was 6.92 (higher than we saw for the full training set). When we looked at the metrics across the different folds there was a lot of variation. For example, the r-squared value varied from 0.004 to 0.93 and mean absolute error varied from 3.96 to 9.19. The same was observed for the statistical significance of childcare spending, in some of the folds it wasn't significant at all. 
+
+![image](https://github.com/user-attachments/assets/a5a0428b-67f9-4b9a-aa16-5d7e06dba258)
+
+Finally, the linear model was evaluated on the test dataset (see metrics below). 66% of the variation in boardroom rate was explained and the average absolute error was 6.88. Not too bad but not ideal. Looking at the predictions showed some large residuals (see below). Almost 10% in this case is significant.
+
+![image](https://github.com/user-attachments/assets/316dcc9d-aa80-4964-adfb-011be1e85cb0)
+
+![image](https://github.com/user-attachments/assets/919dd647-44a3-4b9e-bba0-29bb84e41293)
 
