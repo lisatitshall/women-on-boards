@@ -409,16 +409,72 @@ get_model <- function(x) {
 }
 
 #fit model on training set
+#is the correct approach to fit to the whole training set to assess
+#   the assumptions of linear regression and then do cross validation
+#   to get a more realistic idea of how the model will perform on test
+#   OR do you test the assumptions of linear regression on the combo of 
+#   all cross validation models?
 model_fit <- workflow %>% fit_resamples(resamples = train_folds,
                                         control = control_resamples(
-                                          extract = get_model))
-model_fit
+                                          extract = get_model,
+                                          save_pred = TRUE),
+                                          metrics = metric_set(
+                                            rmse, rsq, mae
+                                          ))
 
-#this tibble lists the rmse and rsq for each fold
+#this calculates the average metrics over all folds
+#on average only 23.4% of variance in boardroom rate explained by model
+#on average 6.92 error (measured in %, seems high)
+model_fit %>% collect_metrics()
+
+#this lists the rmse, rsq and mae for each fold
+#model 2 has the best rsq
+#model 4 has the best rmse and mae
 model_fit$.metrics[1:5]
+#Same breakdown but easier to compare
+#the rsq is very low apart from in one fold
+#mae is between 3.96 and 9.19 - not great
+model_fit %>% collect_metrics(summarize = FALSE)
+
+#Look at all predictions across folds
+model_predictions <- model_fit %>% collect_predictions() %>%
+  mutate(resid = .pred - WomenBoardroomRate)
+
+#plot residuals against fitted values, looks ok
+plot(model_predictions$WomenBoardroomRate, model_predictions$resid)
+abline(a=0, b=0)
+
+#plot all residuals, approx normal
+hist(model_predictions$resid, breaks = 10)
+mean(model_predictions$resid)
+median(model_predictions$resid)
 
 #this lists the linear regression results for one fold (first number kth fold)
 model_fit$.extracts[[5]][[1]]
+
+#this lists the fit for each fold (including p values)
+#childcare spending is sometimes not significant
+#any quota is more consistently significant (one exception)
+model_extracts <- model_fit %>% collect_extracts()
+model_extracts$.extracts
+
+#fit the model to the test dataset
+test_fit <- last_fit(
+  workflow,
+  split = split, 
+  metrics = metric_set(rmse, mae, rsq)
+)
+test_fit
+
+#on the test dataset the average error is 6.88 (measured in %)
+#the model explains 66% of the variation in boardroom rate
+test_fit$.metrics
+
+#this lists the actual and predicted values
+test_fit$.predictions
+
+#this lists the coefficients of the equation
+test_fit$.workflow
 
 #Ideas:
 
