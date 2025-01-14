@@ -385,9 +385,7 @@ split <- initial_split(women_on_boards_raw, strata = AnyQuota)
 train <- training(split)
 test <- testing(split)
 
-#use 5-fold cross validation
-set.seed(1001)
-train_folds <- vfold_cv(train, v = 5)
+#firstly fit model on whole training set to assess lm assumptions
 
 #create recipe, no preprocessing for now but get used to structure
 recipe <- recipe(
@@ -403,75 +401,107 @@ workflow <- workflow() %>%
   add_model(linear_model) %>%
   add_recipe(recipe)
 
+#fit model on whole train set
+model_fit <- workflow %>% fit(data = train)
+
+#assess fit of model, childcare spending only marginally significant
+model_fit %>% extract_fit_parsnip() %>% tidy() 
+
+#add predictions and residuals to train dataset 
+train_augment <-augment(model_fit, train) 
+
+#look at rsq, 65% of variation in price explained by model
+rsq(train_augment, truth = WomenBoardroomRate, estimate = .pred) 
+
+#mean absolute error, average prediction is wrong by 4.1, not too bad
+mae(train_augment, truth = WomenBoardroomRate, estimate = .pred)
+
+#plot residuals against fitted values, looks ok
+plot(train_augment$.pred, 
+     train_augment$.resid,
+     xlab = "Fitted Value",
+     ylab = "Residual",
+     main = "Fitted vs residuals")
+abline(a=0, b=0, col = "red")
+
+#plot distribution of residuals, looks slightly negatively skewed
+hist(train_augment$.resid, breaks = 10,
+     xlab = "Residual", 
+     main = "Histogram of residuals")
+
+#plot qq-plot, not too bad
+qqnorm(train_augment$.resid, pch = 1, frame = FALSE) 
+qqline(train_augment$.resid, col = "blue", lwd = 2) 
+
+#overall thoughts: model assumptions are roughly fulfilled,
+  # metrics are OK but not the best
+
+#try cross validation to get a more accurate idea of how the 
+#  model will perform on unseen data
+
+#use 5-fold cross validation
+set.seed(1001)
+train_folds <- vfold_cv(train, v = 5)
+
 #function to get model results
 get_model <- function(x) {
   extract_fit_parsnip(x) %>% tidy()
 }
 
-#fit model on training set
-#is the correct approach to fit to the whole training set to assess
-#   the assumptions of linear regression and then do cross validation
-#   to get a more realistic idea of how the model will perform on test
-#   OR do you test the assumptions of linear regression on the combo of 
-#   all cross validation models?
-model_fit <- workflow %>% fit_resamples(resamples = train_folds,
-                                        control = control_resamples(
-                                          extract = get_model,
-                                          save_pred = TRUE),
-                                          metrics = metric_set(
-                                            rmse, rsq, mae
-                                          ))
+#fit model on 5 folds
+cv_model_fit <- workflow %>% fit_resamples(resamples = train_folds,
+                                           control = control_resamples(
+                                             extract = get_model,
+                                             save_pred = TRUE),
+                                           metrics = metric_set(
+                                             rsq, mae
+                                           ))
 
 #this calculates the average metrics over all folds
 #on average only 23.4% of variance in boardroom rate explained by model
 #on average 6.92 error (measured in %, seems high)
-model_fit %>% collect_metrics()
+cv_model_fit %>% collect_metrics()
 
-#this lists the rmse, rsq and mae for each fold
-#model 2 has the best rsq
-#model 4 has the best rmse and mae
-model_fit$.metrics[1:5]
+#this lists the rsq and mae for each fold
+cv_model_fit$.metrics[1:5]
 #Same breakdown but easier to compare
-#the rsq is very low apart from in one fold
-#mae is between 3.96 and 9.19 - not great
-model_fit %>% collect_metrics(summarize = FALSE)
+#rsq varies from 0.004 to 0.93 and is generally low
+#mae varies from 3.96 to 9.19 (reasonable to not good)
+cv_model_fit %>% collect_metrics(summarize = FALSE)
 
 #Look at all predictions across folds
-model_predictions <- model_fit %>% collect_predictions() %>%
-  mutate(resid = .pred - WomenBoardroomRate)
-
-#plot residuals against fitted values, looks ok
-plot(model_predictions$WomenBoardroomRate, model_predictions$resid)
-abline(a=0, b=0)
-
-#plot all residuals, approx normal
-hist(model_predictions$resid, breaks = 10)
-mean(model_predictions$resid)
-median(model_predictions$resid)
+cv_model_predictions <- cv_model_fit %>% collect_predictions() %>%
+  mutate(resid = WomenBoardroomRate - .pred)
+#some large residuals (both +ve and -ve)
+cv_model_predictions %>% arrange(resid)
 
 #this lists the linear regression results for one fold (first number kth fold)
-model_fit$.extracts[[5]][[1]]
+cv_model_fit$.extracts[[5]][[1]]
 
 #this lists the fit for each fold (including p values)
 #childcare spending is sometimes not significant
 #any quota is more consistently significant (one exception)
-model_extracts <- model_fit %>% collect_extracts()
-model_extracts$.extracts
+cv_model_extracts <- cv_model_fit %>% collect_extracts()
+cv_model_extracts$.extracts
+
+#overall r2 and mae vary considerably between the different folds
+#sometimes childcare spending isn't statistically significant
 
 #fit the model to the test dataset
 test_fit <- last_fit(
   workflow,
   split = split, 
-  metrics = metric_set(rmse, mae, rsq)
+  metrics = metric_set(mae, rsq)
 )
-test_fit
+
 
 #on the test dataset the average error is 6.88 (measured in %)
 #the model explains 66% of the variation in boardroom rate
 test_fit$.metrics
 
 #this lists the actual and predicted values
-test_fit$.predictions
+(test_predictions <- test_fit$.predictions %>% as.data.frame() %>% 
+  mutate(.resid = WomenBoardroomRate - .pred))
 
 #this lists the coefficients of the equation
 test_fit$.workflow
@@ -479,6 +509,8 @@ test_fit$.workflow
 #Ideas:
 
 #Try ridge or lasso regression because ChildcareSpending/AnyQuota are correlated
+# note: without no quota countries, quota/childcare spend looks like a good model,
+# which variables (if any) are correlated to boardroom rate for no quota countries
 #Try log transform of ChildcareSpending to make it more symmetric
 #What other methods could be used?
 #Later: Are there clusters within data for similar countries?
