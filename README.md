@@ -69,9 +69,9 @@ Plotting the residuals showed no significant violation of linear regression assu
 
 ![image](https://github.com/user-attachments/assets/6f3f685e-9f56-4ed4-ad0f-749cfedd5644)
 
-5-fold cross validation was performed to give a more accurate idea of how the model was likely to perform on an unseen test dataset. The average metrics can be seen in the table below. On average only 23% of the variation in boardroom rate was explained by the model and the average mean absolute error was 6.92 (higher than we saw for the full training set). When we looked at the metrics across the different folds there was a lot of variation. For example, the r-squared value varied from 0.004 to 0.93 and mean absolute error varied from 3.96 to 9.19. The same was observed for the statistical significance of childcare spending, in some of the folds it wasn't significant at all. 
+5-fold cross validation was performed to give a more accurate idea of how the model was likely to perform on an unseen test dataset. The average metrics can be seen in the table below. On average only 13% of the variation in boardroom rate was explained by the model and the average mean absolute error was 6.83 (higher than we saw for the full training set). When we looked at the metrics across the different folds there was a lot of variation. For example, the r-squared value varied from 0.4 to 1 and mean absolute error varied from 4.68 to 13.5. The same was observed for the statistical significance of childcare spending, in some of the folds it wasn't significant at all. 
 
-![image](https://github.com/user-attachments/assets/a5a0428b-67f9-4b9a-aa16-5d7e06dba258)
+![image](https://github.com/user-attachments/assets/29a15172-40b4-46c4-966c-99b4310b8ce1)
 
 Finally, the linear model was evaluated on the test dataset (see metrics below). 66% of the variation in boardroom rate was explained and the average absolute error was 6.88. Not too bad but not ideal. Looking at the predictions showed some large residuals (see below). Almost 10% in this case is significant.
 
