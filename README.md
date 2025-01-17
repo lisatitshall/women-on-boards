@@ -10,7 +10,7 @@ The data consists of a list of countries and variables relating to maternity lea
 - Step 3: Plot variables individually to assess distribution shape and whether there are outliers
 - Step 4: Plot dependent and independent variables to assess strength and linearity of relationships
 - Step 5: Use correlation, ANOVA and Kruskal Wallis tests to confirm relationships statistically
-- Step 6: Use tidymodels with k-fold cross validation to fit a linear model
+- Step 6: Use tidymodels with k-fold cross validation to fit a linear regression model
 
 ## Findings
 ### [1] The percentage of women on boards is approximately normal
@@ -43,7 +43,7 @@ These relationships were confirmed using Pearson or Kendall correlation (whichev
 
 Childcare spending and childcare enrolment rate are also correlated with each other (Kendall correlation returned a value of 0.47).
 
-### [5] Removing maternity leave outliers affected relationships between dependent variables
+### [5] Removing maternity leave outliers affected relationships between independent variables
 ANOVA or Kruskal Wallis tests were used to assess the relationship between countries with boardroom quotas and their other family and childcare policies.
 
 The results for childcare spending and childcare enrolment rate were significant when all data points were included but not when the maternity leave outliers were removed. The results for childcare spending are shown below. 
