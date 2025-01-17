@@ -2,6 +2,7 @@
 library(tidyverse)
 library(tidymodels)
 library(mgcv)
+library(rstatix)
 
 #data notes
 #data from 2018 except 2017 public sector rates (wouldn't change much in a year)
@@ -321,6 +322,12 @@ kruskal.test(WomenBoardroomRate ~ AnyQuota, data = women_on_boards_raw)
 kruskal.test(WomenBoardroomRate ~ AnyQuota, 
              data = women_on_boards_raw_no_outliers)
 
+#which groups? use Games-Howell post hoc test
+#hard/no quota significant
+#other two are borderline
+games_howell_test(WomenBoardroomRate ~ AnyQuota, 
+                  data = women_on_boards_raw)
+
 #is there a relationship between AnyQuota and other numeric variables
 #visually yes for childcare/maternity leave
 plot_categorical(ChildcareSpending.)
@@ -458,15 +465,15 @@ cv_model_fit <- workflow %>% fit_resamples(resamples = train_folds,
                                            ))
 
 #this calculates the average metrics over all folds
-#on average only 23.4% of variance in boardroom rate explained by model
-#on average 6.92 error (measured in %, seems high)
+#on average only 13.4% of variance in boardroom rate explained by model
+#on average 6.83 error (measured in %, seems high)
 cv_model_fit %>% collect_metrics()
 
 #this lists the rsq and mae for each fold
 cv_model_fit$.metrics[1:5]
 #Same breakdown but easier to compare
-#rsq varies from 0.004 to 0.93 and is generally low
-#mae varies from 3.96 to 9.19 (reasonable to not good)
+#rsq varies from 0.40 to 1
+#mae varies from 4.68 to 13.5 (reasonable to not good)
 cv_model_fit %>% collect_metrics(summarize = FALSE)
 
 #Look at all predictions across folds
@@ -511,8 +518,216 @@ test_fit$.workflow
 #Try ridge or lasso regression because ChildcareSpending/AnyQuota are correlated
 # note: without no quota countries, quota/childcare spend looks like a good model,
 # which variables (if any) are correlated to boardroom rate for no quota countries
-#Try log transform of ChildcareSpending to make it more symmetric (if needed)
 #What other methods could be used?
 #Later: Are there clusters within data for similar countries?
 
+# Second model ---------------------------
+#Plot any quota, childcare enrolment rate and boardroom rate
+#lots of uncertainty
+#strangely for no quota countries the slope is negative
+ggplot(data = women_on_boards_raw, aes(x = ChildcareEnrolmentRate, 
+                                       y = WomenBoardroomRate, 
+                                       colour = AnyQuota)) +
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  theme_bw()
+
+#try lasso regression 
+#create recipe, add dummy encoding for any quota
+#now we have multiple numerical variables normalize them
+lasso_recipe <- recipe(
+  WomenBoardroomRate ~ ChildcareSpending. + ChildcareEnrolmentRate + AnyQuota,
+  data = train
+) %>%
+  step_dummy(AnyQuota) %>%
+  step_normalize(ChildcareSpending., ChildcareEnrolmentRate)
+
+#first find the optimal lamdba using 5-fold cross validation
+#model
+tune_lambda <- linear_reg(penalty = tune(), mixture = 1) %>% 
+  set_engine("glmnet")
+
+#set up workflow
+lasso_workflow <- workflow() %>% 
+  add_model(tune_lambda) %>%
+  add_recipe(lasso_recipe)
+
+#try different values of lambda
+test_grid <- 10^seq(2, -2, length = 100) %>% as.data.frame() %>%
+  rename("penalty" = ".")
+
+lambda_grid <- tune_grid(
+  lasso_workflow,
+  resamples = train_folds,
+  grid = test_grid,
+  metrics = metric_set(
+    rsq, mae
+  )
+  
+)
+#look at the metrics for the different penalty levels
+lambda_grid %>% collect_metrics()
+
+#visualize
+autoplot(lambda_grid)
+
+#define the best penalty level
+#chooses the lowest lambda, is this because we only have 3 variables?
+lowest_mae <- lambda_grid %>%
+  select_best(metric = "mae")
+
+#set up lasso regression model using best lambda
+lasso_model_fit <- finalize_workflow(lasso_workflow, lowest_mae) %>% 
+  fit(data = train)
+
+#assess fit of model, no variables dropped 
+lasso_model_fit %>% extract_fit_parsnip() %>% tidy() 
+
+#add predictions and residuals to train dataset 
+lasso_train_augment <-augment(lasso_model_fit, train) 
+
+#look at rsq, 76% of variation in boardroom rate explained by model
+rsq(lasso_train_augment, truth = WomenBoardroomRate, estimate = .pred) 
+
+#mean absolute error, average prediction is wrong by 3.03, not too bad
+mae(lasso_train_augment, truth = WomenBoardroomRate, estimate = .pred)
+
+#add residuals to augmented dataset
+lasso_train_augment$.resid <- lasso_train_augment$WomenBoardroomRate - 
+  lasso_train_augment$.pred
+
+#plot residuals against fitted values, looks ok
+plot(lasso_train_augment$.pred, 
+     lasso_train_augment$.resid,
+     xlab = "Fitted Value",
+     ylab = "Residual",
+     main = "Fitted vs residuals")
+abline(a=0, b=0, col = "red")
+
+#plot distribution of residuals
+hist(lasso_train_augment$.resid, breaks = 10,
+     xlab = "Residual", 
+     main = "Histogram of residuals")
+
+#plot qq-plot, not great
+qqnorm(lasso_train_augment$.resid, pch = 1, frame = FALSE) 
+qqline(lasso_train_augment$.resid, col = "blue", lwd = 2) 
+
+#test for normality, ok
+shapiro.test(lasso_train_augment$.resid)
+
+#fit the model to the test dataset
+lasso_test_fit <- last_fit(
+  finalize_workflow(lasso_workflow, lowest_mae),
+  split = split,
+  metrics = metric_set(
+    rsq, mae
+  )
+)
+
+#this lists the metrics, rsq 38%, mae 9.13
+lasso_test_fit$.metrics
+
+#this lists the actual and predicted values, some big residuals
+(lasso_test_predictions <- lasso_test_fit$.predictions %>% 
+    as.data.frame() %>% 
+    mutate(.resid = WomenBoardroomRate - .pred))
+
+#overall: the model assumptions hold but the metrics are worse than lm
+#suspect lowest lambda was chosen because we only have three variables
+
+#curious to see what would happen if all variables were included
+all_lasso_recipe <- recipe(
+  WomenBoardroomRate ~ ChildcareSpending. + ChildcareEnrolmentRate + AnyQuota +
+    MaternityLeaveWeeks + MaternityPaymentRate + PublicSectorRate,
+  data = train
+) %>%
+  step_dummy(AnyQuota) %>%
+  step_normalize(ChildcareSpending., ChildcareEnrolmentRate, 
+                 MaternityLeaveWeeks, MaternityPaymentRate,
+                 PublicSectorRate)
+
+#new workflow
+all_lasso_workflow <- workflow() %>% 
+  add_model(tune_lambda) %>%
+  add_recipe(all_lasso_recipe)
+
+#tune lambda
+all_lambda_grid <- tune_grid(
+  all_lasso_workflow,
+  resamples = train_folds,
+  grid = test_grid,
+  metrics = metric_set(
+    rsq, mae
+  )
+)
+
+#look at the metrics for the different penalty levels
+all_lambda_grid %>% collect_metrics()
+
+#visualize 
+autoplot(all_lambda_grid)
+
+#define the best penalty level
+#this is no longer the smallest possible lambda (as defined by grid)
+all_lowest_mae <- all_lambda_grid %>%
+  select_best(metric = "mae")
+
+#fit model on whole train set
+all_lasso_model_fit <- finalize_workflow(all_lasso_workflow, 
+                                      all_lowest_mae) %>% fit(data = train)
+
+#assess fit of model
+#childcare enrolment rate and maternity leave weeks are removed
+all_lasso_model_fit %>% extract_fit_parsnip() %>% tidy() 
+
+#add predictions and residuals to train dataset 
+all_lasso_train_augment <-augment(all_lasso_model_fit, train) 
+
+#look at rsq, 86% of variation in boardroom rate explained by model
+rsq(all_lasso_train_augment, truth = WomenBoardroomRate, estimate = .pred) 
+
+#mean absolute error, average prediction is wrong by 2.82, good
+mae(all_lasso_train_augment, truth = WomenBoardroomRate, estimate = .pred)
+
+#add residuals to augmented dataset
+all_lasso_train_augment$.resid <- all_lasso_train_augment$WomenBoardroomRate - 
+  all_lasso_train_augment$.pred
+
+#plot residuals against fitted values, looks ok
+plot(all_lasso_train_augment$.pred, 
+     all_lasso_train_augment$.resid,
+     xlab = "Fitted Value",
+     ylab = "Residual",
+     main = "Fitted vs residuals")
+abline(a=0, b=0, col = "red")
+
+#plot distribution of residuals
+hist(all_lasso_train_augment$.resid, breaks = 10,
+     xlab = "Residual", 
+     main = "Histogram of residuals")
+
+#plot qq-plot, ok
+qqnorm(all_lasso_train_augment$.resid, pch = 1, frame = FALSE) 
+qqline(all_lasso_train_augment$.resid, col = "blue", lwd = 2) 
+
+#test for normality, ok
+shapiro.test(all_lasso_train_augment$.resid)
+
+#fit the model to the test dataset
+all_lasso_test_fit <- last_fit(
+  finalize_workflow(all_lasso_workflow, all_lowest_mae),
+  split = split,
+  metrics = metric_set(
+    rsq, mae
+  )
+)
+
+#this lists the metrics, 61% r-squared, 6.09 mae
+all_lasso_test_fit$.metrics
+
+#this lists the actual and predicted values, still some large values
+(all_lasso_test_predictions <- all_lasso_test_fit$.predictions %>% 
+    as.data.frame() %>% 
+    mutate(.resid = WomenBoardroomRate - .pred))
 
