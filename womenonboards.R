@@ -569,12 +569,19 @@ lambda_grid <- tune_grid(
 lambda_grid %>% collect_metrics()
 
 #visualize
+#at high lambdas no variation explained
+#the smaller the lambda the better the metrics
 autoplot(lambda_grid)
 
 #define the best penalty level
 #chooses the lowest lambda, is this because we only have 3 variables?
 lowest_mae <- lambda_grid %>%
   select_best(metric = "mae")
+
+#alternative way of choosing best parameter
+#in this case doubt will make much difference
+lambda_grid %>% 
+  select_by_one_std_err(metric = "mae", desc(penalty))
 
 #set up lasso regression model using best lambda
 lasso_model_fit <- finalize_workflow(lasso_workflow, lowest_mae) %>% 
@@ -666,12 +673,20 @@ all_lambda_grid <- tune_grid(
 all_lambda_grid %>% collect_metrics()
 
 #visualize 
+#mae much better from 5 to 0.9, then stable
+#rsq much better from 75 to 1, then stable
+#whether we choose to make mae/rsq better wouldn't matter
 autoplot(all_lambda_grid)
 
 #define the best penalty level
 #this is no longer the smallest possible lambda (as defined by grid)
 all_lowest_mae <- all_lambda_grid %>%
   select_best(metric = "mae")
+
+#tried this as an alternative way of choosing lambda, worse results
+# and same variables were removed from model
+all_lambda_grid %>% 
+  select_by_one_std_err(metric = "mae", desc(penalty))
 
 #fit model on whole train set
 all_lasso_model_fit <- finalize_workflow(all_lasso_workflow, 
