@@ -11,6 +11,7 @@ The data consists of a list of countries and variables relating to maternity lea
 - Step 4: Plot dependent and independent variables to assess strength and linearity of relationships
 - Step 5: Use correlation, ANOVA and Kruskal Wallis tests to confirm relationships statistically
 - Step 6: Use tidymodels with k-fold cross validation to fit a linear regression model
+- Step 7: See if a lasso regression model is an improvement on the linear regression model
 
 ## Findings
 ### [1] The percentage of women on boards is approximately normal
@@ -79,3 +80,18 @@ Finally, the linear model was evaluated on the test dataset (see metrics below).
 
 ![image](https://github.com/user-attachments/assets/919dd647-44a3-4b9e-bba0-29bb84e41293)
 
+### [7] Lasso regression doesn't improve on linear regression
+Linear regression with the two chosen variables performed OK but suboptimally. Because of multicollinearity, a lasso regression model was attempted next using all independent variables. 
+A grid of lambdas between 0.1 and 100 were tried to minimize the mean absolute error. The graph below shows how an optimal lambda was around 0.7 to 1. It also seemed that trying smaller lambda values wouldn't improve the metrics significantly. 
+
+![image](https://github.com/user-attachments/assets/978752c4-5588-4005-9db7-4cd66737c70e)
+
+When the model was fitted to the training data two variables, childcare enrolment rate and maternity leave weeks, were removed from the model (see below). 86% of the variation in boardroom rate was explained by the model and the mean absolute error was 2.82. Plotting the residuals against the fitted values and a histogram of the residuals showed no signs of heteroscedasticity or non-normal errors. 
+
+![image](https://github.com/user-attachments/assets/9b8c3784-c433-4217-bbad-9dc8da18dea0)
+
+The results for the test dataset weren't as good. Only 61% of the variation in boardroom rate was explained and the mean absolute error was 6.09 (this compared to 66% and 6.88 for linear regression). The table of predictions below shows some large discrepancies.
+
+![image](https://github.com/user-attachments/assets/b868aab1-dcb6-4d47-a6a0-aedfa645320b)
+
+Interestingly, the same test data points (row 5 and 15) were heavily overestimated by linear and lasso regression and the same data point (row 18) was heavily underestimated. 
