@@ -747,3 +747,7 @@ all_lasso_test_fit$.metrics
     as.data.frame() %>% 
     mutate(.resid = WomenBoardroomRate - .pred))
 
+# Ideas:
+# The same data points were over/underestimated using linear/lasso regression
+# Do these data points have anything in common?
+# Could we try clustering the data to identify groupings?
