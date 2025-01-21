@@ -676,7 +676,8 @@ all_lambda_grid %>% collect_metrics()
 #mae much better from 5 to 0.9, then stable
 #rsq much better from 75 to 1, then stable
 #whether we choose to make mae/rsq better wouldn't matter
-autoplot(all_lambda_grid)
+#seems lower lambda values wouldn't improve the model
+autoplot(all_lambda_grid) + theme_bw()
 
 #define the best penalty level
 #this is no longer the smallest possible lambda (as defined by grid)
