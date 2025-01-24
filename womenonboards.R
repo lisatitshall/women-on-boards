@@ -3,6 +3,8 @@ library(tidyverse)
 library(tidymodels)
 library(mgcv)
 library(rstatix)
+#clustering
+library(factoextra)
 
 #data notes
 #data from 2018 except 2017 public sector rates (wouldn't change much in a year)
@@ -751,3 +753,68 @@ all_lasso_test_fit$.metrics
 # The same data points were over/underestimated using linear/lasso regression
 # Do these data points have anything in common?
 # Could we try clustering the data to identify groupings?
+
+# k-means clustering --------------------
+#Try k-means clustering to see if there are groupings
+#  between countries and their employment policies
+
+#remove categorical variables
+women_on_boards_raw_continuous_only <- 
+  women_on_boards_raw %>% select(Country:PublicSectorRate, WomenBoardroomRate)
+                                 
+#change index to country names
+rownames(women_on_boards_raw_continuous_only) <- 
+  women_on_boards_raw_continuous_only$Country                     
+
+#scale data
+women_on_boards_raw_continuous_only_scaled <- 
+  scale(women_on_boards_raw_continous_only %>% select(!Country))
+
+#plot elbow plot to determine good number of clusters, 4
+set.seed(123)
+fviz_nbclust(women_on_boards_raw_continuous_only_scaled, kmeans, 
+             method = "wss")
+
+#do different methods choose different optimal? 3 for silhouette, 1 for gap?
+fviz_nbclust(women_on_boards_raw_continuous_only_scaled, kmeans, 
+             method = "silhouette")
+
+fviz_nbclust(women_on_boards_raw_continuous_only_scaled, kmeans, 
+             method = "gap_stat")
+
+#try clustering with 4 clusters
+four_means <- kmeans(women_on_boards_raw_continuous_only_scaled, 4, 
+                     nstart = 25)
+
+four_means
+
+#see the mean variables on the original, unscaled dataset
+aggregate(women_on_boards_raw_continous_only %>% select(!Country), 
+          by=list(cluster=four_means$cluster), mean)
+
+#visualize the clusters
+fviz_cluster(four_means, data = women_on_boards_raw_continuous_only_scaled,
+             labelsize = 8, main = "4-means clustering result",
+             ggtheme = theme_bw())
+
+#try for 3 clusters 
+three_means <- kmeans(women_on_boards_raw_continuous_only_scaled, 3, 
+                      nstart = 25)
+
+three_means
+
+#see the mean variables on the original, unscaled dataset
+aggregate(women_on_boards_raw_continous_only %>% select(!Country), 
+          by=list(cluster=three_means$cluster), mean)
+
+fviz_cluster(three_means, data = women_on_boards_raw_continuous_only_scaled,
+             labelsize = 8, main = "3-means clustering result",
+             ggtheme = theme_bw())
+
+#four means is preferable because it minimizes the WSS and grouping 
+# together the two closest clusters removes the difference in boardroom rate
+
+#after deciding whether 3 or 4 clusters is preferable, 
+#add cluster numbers to original dataset
+women_on_boards_raw <- cbind(
+  women_on_boards_raw, cluster = four_means$cluster)
