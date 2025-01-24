@@ -811,7 +811,7 @@ fviz_cluster(three_means, data = women_on_boards_raw_continuous_only_scaled,
              labelsize = 8, main = "3-means clustering result",
              ggtheme = theme_bw())
 
-#four means is preferable because it minimizes the WSS and grouping 
+#four means preferable because it improves the WSS significantly and grouping 
 # together the two closest clusters removes the difference in boardroom rate
 
 #after deciding whether 3 or 4 clusters is preferable, 
