@@ -12,6 +12,7 @@ The data consists of a list of countries and variables relating to maternity lea
 - Step 5: Use correlation, ANOVA and Kruskal Wallis tests to confirm relationships statistically
 - Step 6: Use tidymodels with k-fold cross validation to fit a linear regression model
 - Step 7: See if a lasso regression model is an improvement on the linear regression model
+- Step 8: Try k-means clustering to group the countries
 
 ## Findings
 ### [1] The percentage of women on boards is approximately normal
@@ -95,3 +96,32 @@ The results for the test dataset weren't as good. Only 61% of the variation in b
 ![image](https://github.com/user-attachments/assets/b868aab1-dcb6-4d47-a6a0-aedfa645320b)
 
 Interestingly, the same test data points (row 5 and 15) were heavily overestimated by linear and lasso regression and the same data point (row 18) was heavily underestimated. 
+
+### [8] Two distinct clusters exist in the data but the remaining points are more varied
+It is interesting to see if there are groupings within the data where countries have similar employment policies. To do this we tried k-means clustering. 
+
+Plotting an elbow graph suggested four was a good candidate for k (see below). By an alternative metric, average silhouette score, three was the optimal k. Therefore, we ran k-means clustering with k = 3 and k = 4 to compare the results.
+
+![image](https://github.com/user-attachments/assets/356ae9df-f15d-4615-92b3-c097678b2c23)
+
+The screenshots below show the within cluster sum of squares for three and four clusters. Increasing the clusters to four saw a 12% increase in the between sum / total sum ratio. This is a significant improvement.
+
+![image](https://github.com/user-attachments/assets/5a4f4f27-d261-4528-b303-15605d7974d6)
+
+![image](https://github.com/user-attachments/assets/0a84ad37-eb37-452b-9f14-96fa0dafa9d3)
+
+The following image plots the four clusters to show how distinct they are. Clusters 1 and 2 are more distinct and relatively compact. Clusters 3 and 4 are closer together (and merged in the 3 cluster solution). Furthermore, cluster 3 has a larger within cluster variance (this is the largest WCSS, 22.9, in the image above). 
+
+![image](https://github.com/user-attachments/assets/c0cceedb-abd3-4ee9-b982-ccac363d4092)
+
+So how can we describe the differences between these clusters? The table below shows the average across clusters and variables. We can see the following:
+- Cluster 1: These countries have the highest percentage of women on boards, childcare spending and childcare enrolment. This could suggest that childcare policies are more helpful than maternity leave policies in helping women progress in their careers. This makes intuitive sense because taking maternity leave is a relatively short period of time whereas good quality childcare will have a longer impact. All of these countries have a quota on boardroom rate, 2 soft and 2 hard. 
+- Cluster 2: These countries have the lowest percentage of women on boards, lowest childcare enrolment rate and highest maternity leave weeks. This could suggest a more traditional approach to childcare where women take care of their children for longer at home. 3 of these 4 countries don't have a quota on boardroom rate. 
+- Cluster 3: Nothing significant stands out. This is the most varied cluster. 
+- Cluster 4: The only significant measure is that maternity payment rate is much higher. 
+
+![image](https://github.com/user-attachments/assets/27afbef2-a77d-4d44-928f-8bbf82d18dfa)
+
+From linear and lasso regression we noticed points that were over or underestimated. We compared these points to their clusters to see whether there were any trends in either the cluster numbers or whether points were more extreme in their respective clusters. No trends were identified. 
+
+Overall, k-means clustering identified two distinct clusters with commonalities. However, outliers still existed and some things can't be explained by this approach. 
