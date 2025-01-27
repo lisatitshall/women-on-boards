@@ -12,7 +12,7 @@ The data consists of a list of countries and variables relating to maternity lea
 - Step 5: Use correlation, ANOVA and Kruskal Wallis tests to confirm relationships statistically
 - Step 6: Use tidymodels with k-fold cross validation to fit a linear regression model
 - Step 7: See if a lasso regression model is an improvement on the linear regression model
-- Step 8: Try k-means clustering to group the countries
+- Step 8: Try k-means and PAM clustering to group the countries
 
 ## Findings
 ### [1] The percentage of women on boards is approximately normal
@@ -125,3 +125,8 @@ So how can we describe the differences between these clusters? The table below s
 From linear and lasso regression we noticed points that were over or underestimated. We compared these points to their clusters to see whether there were any trends in either the cluster numbers or whether points were more extreme in their respective clusters. No trends were identified. 
 
 Overall, k-means clustering identified two distinct clusters with commonalities. However, outliers still existed and some things can't be explained by this approach. 
+
+Note: PAM clustering was also attempted as a robust alternative to k-means clustering. The results were the same except:
+- The optimal k was 3 instead of 4 
+- PAM clustering returns medoids which can be considered representative points of their respective clusters. In the 3 cluster case they were Portugal, Denmark and Hungary.
+- Only one of the clusters was considered an isolated cluster (the one containing Denmark). From k-means it seemed both the Denmark and Hungary clusters were isolated. 
