@@ -4,6 +4,7 @@ library(tidymodels)
 library(mgcv)
 library(rstatix)
 #clustering
+library(cluster)
 library(factoextra)
 
 #data notes
@@ -768,7 +769,7 @@ rownames(women_on_boards_raw_continuous_only) <-
 
 #scale data
 women_on_boards_raw_continuous_only_scaled <- 
-  scale(women_on_boards_raw_continous_only %>% select(!Country))
+  scale(women_on_boards_raw_continuous_only %>% select(!Country))
 
 #plot elbow plot to determine good number of clusters, 4
 set.seed(123)
@@ -789,7 +790,7 @@ four_means <- kmeans(women_on_boards_raw_continuous_only_scaled, 4,
 four_means
 
 #see the mean variables on the original, unscaled dataset
-aggregate(women_on_boards_raw_continous_only %>% select(!Country), 
+aggregate(women_on_boards_raw_continuous_only %>% select(!Country), 
           by=list(cluster=four_means$cluster), mean)
 
 #visualize the clusters
@@ -804,7 +805,7 @@ three_means <- kmeans(women_on_boards_raw_continuous_only_scaled, 3,
 three_means
 
 #see the mean variables on the original, unscaled dataset
-aggregate(women_on_boards_raw_continous_only %>% select(!Country), 
+aggregate(women_on_boards_raw_continuous_only %>% select(!Country), 
           by=list(cluster=three_means$cluster), mean)
 
 fviz_cluster(three_means, data = women_on_boards_raw_continuous_only_scaled,
@@ -816,5 +817,41 @@ fviz_cluster(three_means, data = women_on_boards_raw_continuous_only_scaled,
 
 #after deciding whether 3 or 4 clusters is preferable, 
 #add cluster numbers to original dataset
+#can't see any trend between over/underestimates and clusters/location
 women_on_boards_raw <- cbind(
   women_on_boards_raw, cluster = four_means$cluster)
+
+#Ideas
+#Try PAM clustering instead, can choose different similarity measures and 
+#  is more robust to outliers
+#Understand more about hierarchical clustering and whether it would be 
+# suitable in this case
+
+# PAM clustering ----------------------------
+
+#PAM clustering requires the same preprocessing as k-means so we 
+#  can use this dataset 
+
+#plot elbow plot to determine good number of clusters, 3
+set.seed(123)
+fviz_nbclust(women_on_boards_raw_continuous_only_scaled, cluster::pam, 
+             method = "silhouette")
+
+
+#try PAM clustering with 3 clusters
+three_medoids <- pam(women_on_boards_raw_continuous_only_scaled, 3, 
+                     metric = "manhattan", nstart = 25, stand = FALSE)
+
+#objective function shows improvement between build and swap phase
+#isolation shows only cluster 2 is considered to be isolated
+three_medoids
+
+#this isn't available for k-means
+#by default plots two graphs, one showing clusters and the other showing
+# silhouette scores
+plot(three_medoids, main = "PAM clustering results", max.strlen = 10)
+
+#visualize the clusters
+fviz_cluster(three_medoids, data = women_on_boards_raw_continuous_only_scaled,
+             labelsize = 8, main = "PAM clustering result",
+             ggtheme = theme_bw())
