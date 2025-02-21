@@ -339,6 +339,10 @@ kruskal.test(WomenBoardroomRate ~ AnyQuota,
 games_howell_test(WomenBoardroomRate ~ AnyQuota, 
                   data = women_on_boards_raw)
 
+#effect size, large
+kruskal_effsize(data = women_on_boards_raw, 
+                WomenBoardroomRate ~ AnyQuota)
+
 #is there a relationship between AnyQuota and other numeric variables
 #visually yes for childcare/maternity leave
 plot_categorical(ChildcareSpending.)
@@ -353,6 +357,8 @@ women_on_boards_raw_no_outliers %>%
 #does childcare spending differ by AnyQuota?
 #connected for full dataset, not connected for no outlier dataset
 kruskal.test(ChildcareSpending. ~ AnyQuota, data = women_on_boards_raw)
+kruskal_effsize(data = women_on_boards_raw, 
+                ChildcareSpending. ~ AnyQuota)
 kruskal.test(ChildcareSpending. ~ AnyQuota, 
              data = women_on_boards_raw_no_outliers)
 
@@ -360,6 +366,8 @@ kruskal.test(ChildcareSpending. ~ AnyQuota,
 #connected for full dataset, not connected for no outlier dataset
 enrolment_anova <- aov(ChildcareEnrolmentRate ~ AnyQuota, 
                        data = women_on_boards_raw)
+kruskal_effsize(data = women_on_boards_raw, 
+                ChildcareEnrolmentRate ~ AnyQuota)
 enrolment_anova_2 <- aov(ChildcareEnrolmentRate ~ AnyQuota, 
                        data = women_on_boards_raw_no_outliers)
 
