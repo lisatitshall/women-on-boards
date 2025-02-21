@@ -17,14 +17,9 @@ The data consists of a list of countries and variables relating to maternity lea
 ## Findings
 ### [1] The percentage of women on boards is approximately normal
 
-![image](https://github.com/user-attachments/assets/8e33ec88-2cd4-4264-8c3b-8e35afc9948a)
+![image](https://github.com/user-attachments/assets/eead9fc3-9236-49cb-a4ce-824c116e8bdb)
 
-### [2] Four countries have extreme values for maternity leave weeks
-These were more than 3 IQR above the 3rd quartile.
-
-![image](https://github.com/user-attachments/assets/aac373cf-a59e-4e00-8d44-8d47c1d7cbb1)
-
-### [3] There's a strong relationship between whether countries have boardroom quotas and the percentage of women on company boards
+### [2] There's a strong relationship between boardroom quotas and the percentage of women on company boards
 
 ![image](https://github.com/user-attachments/assets/7fdfa4ab-35d5-4cda-b162-50853f6ebf89)
 
@@ -32,8 +27,8 @@ This relationship was confirmed using a Kruskal-Wallis test:
 
 ![image](https://github.com/user-attachments/assets/0bceb1fa-56af-4b67-976d-0da39984cc69)
 
-### [4] There are three moderate, positive linear relationships between dependent and indepdendent variables
-Childcare spending, childcare enrolment rate and maternity leave weeks all have a moderate positive relationship with the percentage of women on boards (see graphs below). Note: the maternity leave graph shows the relationship with the four extreme outliers removed.
+### [3] There are three moderate, positive linear relationships between dependent and indepdendent variables
+Childcare spending, childcare enrolment rate and maternity leave weeks all have a moderate positive relationship with the percentage of women on boards (see graphs below). Note: the maternity leave graph shows the relationship with four extreme outliers removed (more than 3 IQR above 3rd quartile).
 
 ![image](https://github.com/user-attachments/assets/e5b3cf5e-3605-455a-a4fe-3163d4b1b332)
 
@@ -45,7 +40,7 @@ These relationships were confirmed using Pearson or Kendall correlation (whichev
 
 Childcare spending and childcare enrolment rate are also correlated with each other (Kendall correlation returned a value of 0.47).
 
-### [5] Removing maternity leave outliers affected relationships between independent variables
+### [4] Removing maternity leave outliers affected relationships between independent variables
 ANOVA or Kruskal Wallis tests were used to assess the relationship between countries with boardroom quotas and their other family and childcare policies.
 
 The results for childcare spending and childcare enrolment rate were significant when all data points were included but not when the maternity leave outliers were removed. The results for childcare spending are shown below. 
@@ -54,7 +49,7 @@ The results for childcare spending and childcare enrolment rate were significant
 
 ![image](https://github.com/user-attachments/assets/1028b91d-a7ce-436d-8592-95140eca59da)
 
-### [6] Childcare spending and quota alone don't explain enough variation in boardroom rate
+### [5] Childcare spending and quota alone don't explain enough variation in boardroom rate
 Based on the analysis above the most interesting variables for predicting boardroom rate were: any quota, childcare spending, childcare enrolment rate and maternity leave weeks. Because of the maternity outliers and correlation between childcare spending and childcare enrolment rate we started by visualizing boardroom rate, childcare spending and any quota (see graph below). 
 
 ![image](https://github.com/user-attachments/assets/bda9774f-6807-42f5-b42a-96efd736a2df)
@@ -81,8 +76,8 @@ Finally, the linear model was evaluated on the test dataset (see metrics below).
 
 ![image](https://github.com/user-attachments/assets/919dd647-44a3-4b9e-bba0-29bb84e41293)
 
-### [7] Lasso regression doesn't improve on linear regression
-Linear regression with the two chosen variables performed OK but suboptimally. Because of multicollinearity, a lasso regression model was attempted next using all independent variables. 
+### [6] Lasso regression doesn't improve on linear regression
+Because of multicollinearity, a lasso regression model was attempted next using all independent variables. 
 A grid of lambdas between 0.1 and 100 were tried to minimize the mean absolute error. The graph below shows how an optimal lambda was around 0.7 to 1. It also seemed that trying smaller lambda values wouldn't improve the metrics significantly. 
 
 ![image](https://github.com/user-attachments/assets/978752c4-5588-4005-9db7-4cd66737c70e)
@@ -97,12 +92,10 @@ The results for the test dataset weren't as good. Only 61% of the variation in b
 
 Interestingly, the same test data points (row 5 and 15) were heavily overestimated by linear and lasso regression and the same data point (row 18) was heavily underestimated. 
 
-### [8] Two distinct clusters exist in the data but the remaining points are more varied
-It is interesting to see if there are groupings within the data where countries have similar employment policies. To do this we tried k-means clustering. 
+### [7] Two distinct clusters exist in the data but the remaining points are more varied
+Next we tried k-means clustering to identify groupings within the data.
 
-Plotting an elbow graph suggested four was a good candidate for k (see below). By an alternative metric, average silhouette score, three was the optimal k. Therefore, we ran k-means clustering with k = 3 and k = 4 to compare the results.
-
-![image](https://github.com/user-attachments/assets/356ae9df-f15d-4615-92b3-c097678b2c23)
+Plotting an elbow graph suggested four was a good candidate for k. By an alternative metric, average silhouette score, three was the optimal k. Therefore, we ran k-means clustering with k = 3 and k = 4 to compare the results.
 
 The screenshots below show the within cluster sum of squares for three and four clusters. Increasing the clusters to four saw a 12% increase in the between sum / total sum ratio. This is a significant improvement.
 
@@ -114,17 +107,15 @@ The following image plots the four clusters to show how distinct they are. Clust
 
 ![image](https://github.com/user-attachments/assets/c0cceedb-abd3-4ee9-b982-ccac363d4092)
 
-So how can we describe the differences between these clusters? The table below shows the average across clusters and variables. We can see the following:
-- Cluster 1: These countries have the highest percentage of women on boards, childcare spending and childcare enrolment. This could suggest that childcare policies are more helpful than maternity leave policies in helping women progress in their careers. This makes intuitive sense because taking maternity leave is a relatively short period of time whereas good quality childcare will have a longer impact. All of these countries have a quota on boardroom rate, 2 soft and 2 hard. 
-- Cluster 2: These countries have the lowest percentage of women on boards, lowest childcare enrolment rate and highest maternity leave weeks. This could suggest a more traditional approach to childcare where women take care of their children for longer at home. 3 of these 4 countries don't have a quota on boardroom rate. 
+So how can we describe the differences between these clusters?
+- Cluster 1: Have the highest percentage of women on boards, childcare spending and childcare enrolment and at least a soft boardroom quota. This could suggest that childcare policies are more helpful than maternity leave policies in helping women progress in their careers. 
+- Cluster 2: Have the lowest percentage of women on boards, lowest childcare enrolment rate and highest maternity leave weeks. This could suggest a more traditional, at home approach to childcare. 3 of the 4 countries don't have a boardroom quota. 
 - Cluster 3: Nothing significant stands out. This is the most varied cluster. 
 - Cluster 4: The only significant measure is that maternity payment rate is much higher. 
 
 ![image](https://github.com/user-attachments/assets/27afbef2-a77d-4d44-928f-8bbf82d18dfa)
 
-From linear and lasso regression we noticed points that were over or underestimated. We compared these points to their clusters to see whether there were any trends in either the cluster numbers or whether points were more extreme in their respective clusters. No trends were identified. 
-
-Overall, k-means clustering identified two distinct clusters with commonalities. However, outliers still existed and some things can't be explained by this approach. 
+Overall, k-means clustering identified two distinct clusters with commonalities.
 
 Note: PAM clustering was also attempted as a robust alternative to k-means clustering. The results were the same except:
 - The optimal k was 3 instead of 4 
