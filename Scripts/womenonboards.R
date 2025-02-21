@@ -74,7 +74,15 @@ plot_categorical <- function(col){
 #plot the distribution of the boardroom rate
 #12.5-17.5% and 22.5-27.5% most common
 #looks approx normal
-plot_histogram(WomenBoardroomRate, 5)
+ggplot(women_on_boards_raw, aes(x = WomenBoardroomRate)) +
+  geom_histogram(aes(y= after_stat(density)), binwidth = 5)  +
+  labs(x = "Percentage of women on company boards",
+       y = "Density") +
+  stat_function(fun = dnorm, args = list(
+    mean = mean(women_on_boards_raw$WomenBoardroomRate),
+    sd= sd(women_on_boards_raw$WomenBoardroomRate)),
+    colour = "red") +
+  theme_bw()
 
 median(women_on_boards_raw$WomenBoardroomRate)
 mean(women_on_boards_raw$WomenBoardroomRate)
