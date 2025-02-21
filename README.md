@@ -27,6 +27,10 @@ This relationship was confirmed using a Kruskal-Wallis test:
 
 ![image](https://github.com/user-attachments/assets/0bceb1fa-56af-4b67-976d-0da39984cc69)
 
+The effect size was large:
+
+![image](https://github.com/user-attachments/assets/8aed9786-92c9-4e72-a333-37aadf1cfebb)
+
 ### [3] There are three moderate, positive linear relationships between dependent and indepdendent variables
 Childcare spending, childcare enrolment rate and maternity leave weeks all have a moderate positive relationship with the percentage of women on boards (see graphs below). Note: the maternity leave graph shows the relationship with four extreme outliers removed (more than 3 IQR above 3rd quartile).
 
@@ -43,11 +47,13 @@ Childcare spending and childcare enrolment rate are also correlated with each ot
 ### [4] Removing maternity leave outliers affected relationships between independent variables
 ANOVA or Kruskal Wallis tests were used to assess the relationship between countries with boardroom quotas and their other family and childcare policies.
 
-The results for childcare spending and childcare enrolment rate were significant when all data points were included but not when the maternity leave outliers were removed. The results for childcare spending are shown below. 
+The results for childcare spending and childcare enrolment rate were significant when all data points were included but not when the maternity leave outliers were removed. The results for childcare spending are shown below including the effect size. 
 
 ![kruskal wallis any quota childcare spending with](https://github.com/user-attachments/assets/1f9d1a70-9b8f-4ae0-b2d0-12b8040beb49)
 
 ![image](https://github.com/user-attachments/assets/1028b91d-a7ce-436d-8592-95140eca59da)
+
+![image](https://github.com/user-attachments/assets/d1280363-279e-47e8-89ad-f9a8ae6ed453)
 
 ### [5] Childcare spending and quota alone don't explain enough variation in boardroom rate
 Based on the analysis above the most interesting variables for predicting boardroom rate were: any quota, childcare spending, childcare enrolment rate and maternity leave weeks. Because of the maternity outliers and correlation between childcare spending and childcare enrolment rate we started by visualizing boardroom rate, childcare spending and any quota (see graph below). 
